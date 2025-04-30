@@ -38,7 +38,7 @@ def debug_breakpoint(message, data=None):
     # You can add additional debugging functionality here if needed
 
 # API Config
-openai.api_key = "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"
+openai.api_key = "your_open_router_api_key"
 openai.api_base = "https://openrouter.ai/api/v1"
 
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
