@@ -38,7 +38,11 @@ def debug_breakpoint(message, data=None):
     # You can add additional debugging functionality here if needed
 
 # API Config
+<<<<<<< HEAD
 openai.api_key = "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"
+=======
+openai.api_key = "your_open_router_api_key"
+>>>>>>> a077bf24d4fef82892e78c39fd4b7c9e4bf8acf0
 openai.api_base = "https://openrouter.ai/api/v1"
 
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
@@ -1126,4 +1130,8 @@ if st.session_state.qa_history:
                 b64 = base64.b64encode(notes.encode()).decode()
                 href = f'<a href="data:text/markdown;base64,{b64}" download="{filename}">Click here to download your study notes</a>'
                 st.markdown(href, unsafe_allow_html=True)
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> a077bf24d4fef82892e78c39fd4b7c9e4bf8acf0
