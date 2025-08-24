@@ -1,29 +1,29 @@
-import streamlit as st
-import chromadb
-from sentence_transformers import SentenceTransformer
-import tempfile
-import pdfplumber
-import os
-import uuid
-import openai
-import datetime
-import base64
-import pyttsx3
-import threading
-import time
-import re
-import json
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import speech_recognition as sr
-from PIL import Image
-import io
-import fitz  # PyMuPDF
-import logging
-import traceback
-from collections import Counter
-from wordcloud import WordCloud
+import streamlit as st              # UI framework
+import chromadb                     # Vector database
+from sentence_transformers import SentenceTransformer  # Embedding model
+import tempfile                     # Temp files
+import pdfplumber                   # PDF text
+import os                           # File ops
+import uuid                         # Unique IDs
+import openai                       # LLM API
+import datetime                     # Date/time
+import base64                       # Encode data
+import pyttsx3                      # Text-to-speech
+import threading                    # Async tasks
+import time                         # Timing ops
+import re                           # Regex ops
+import json                         # JSON parse
+import pandas as pd                 # Dataframes
+import numpy as np                  # Arrays/math
+import matplotlib.pyplot as plt     # Plot charts
+import speech_recognition as sr     # Speech input
+from PIL import Image               # Image ops
+import io                           # Bytes IO
+import fitz                         # PDF images
+import logging                      # Logging
+import traceback                    # Trace errors
+from collections import Counter     # Count items
+from wordcloud import WordCloud     #Word cloud
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -38,7 +38,7 @@ def debug_breakpoint(message, data=None):
     # You can add additional debugging functionality here if needed
 
 # API Config
-openai.api_key = "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"
+openai.api_key = "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"
 openai.api_base = "https://openrouter.ai/api/v1"
 
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
@@ -62,7 +62,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 class='main-header'>Advanced PDF Learning Assistant</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='main-header'> Lecture Transcript Knowledge Base & RAG-based Q&A System</h1>", unsafe_allow_html=True)
 
 # State Initialization
 if "qa_history" not in st.session_state:
@@ -191,7 +191,7 @@ def generate_question_suggestions(text):
     try:
         # Use OpenAI to generate questions
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="google/gemini-2.5-flash",
             messages=[
                 {"role": "system", "content": "You are an expert at creating relevant questions from academic or lecture content. Generate 5 important questions that would help someone understand the key concepts in the provided text. Return ONLY the questions with no additional text or numbering, with one question per line."},
                 {"role": "user", "content": f"Here is the text from a lecture or academic content:\n\n{text[:4000]}...\n\nGenerate 5 clear, concise questions that cover the main concepts."}
@@ -212,16 +212,17 @@ def generate_question_suggestions(text):
 def use_suggested_question(question):
     """Set the question to be processed and flag it for immediate processing"""
     debug_breakpoint(f"Using suggested question: {question[:30]}...")
-    st.session_state.question_input = question
+    st.session_state.pending_question_input = question  # <-- Use a pending variable
     st.session_state.process_question = True
     st.session_state.question_to_process = question
+    st.rerun()
 
 def extract_topics(text):
     """Extract main topics from text using OpenAI"""
     debug_breakpoint("Extracting topics from text")
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="google/gemini-2.5-flash",
             messages=[
                 {"role": "system", "content": "You are an expert at identifying main topics and concepts in academic or educational content. Extract the 5-10 most important topics from the provided text. Return the topics as a valid JSON array of strings."},
                 {"role": "user", "content": f"Here is the text from academic content:\n\n{text[:4000]}...\n\nExtract the 5-10 most important topics as a JSON array."}
@@ -289,7 +290,7 @@ def generate_summary(text, level="detailed"):
     
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="google/gemini-2.5-flash",
             messages=[
                 {"role": "system", "content": f"You are an expert at creating concise yet informative summaries. {detail_prompts[level]} of the provided text."},
                 {"role": "user", "content": f"Here is the text to summarize:\n\n{text[:4000]}..."}
@@ -500,7 +501,7 @@ def process_query(question, collection):
 
             # Get answer from OpenAI
             response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="google/gemini-2.5-flash",
                 messages=[
                     {"role": "system", "content": f"You are a helpful academic assistant answering questions based on lecture content. Be concise but thorough. {viz_instruction}"},
                     {"role": "user", "content": f"Context from the document:\n{context}\n\nQuestion: {question}"}
@@ -521,26 +522,27 @@ def process_query(question, collection):
 def generate_quiz(collection, topic=None):
     """Generate a quiz based on the document content, optionally focusing on a specific topic"""
     debug_breakpoint(f"Generating quiz for topic: {topic if topic else 'all'}")
+    context = ""
+    if topic and topic in st.session_state.extracted_topics:
+        passage_ids = st.session_state.extracted_topics[topic]
+        passages = [st.session_state.all_passages[pid] for pid in passage_ids[:10] if pid < len(st.session_state.all_passages)]
+        context = "\n".join(passages)
+    else:
+        sample_size = min(10, len(st.session_state.all_passages))
+        passage_indices = np.random.choice(len(st.session_state.all_passages), sample_size, replace=False)
+        context = "\n".join([st.session_state.all_passages[i] for i in passage_indices])
     
+    # Fallback: Use Q&A history if context is empty
+    if not context and st.session_state.qa_history:
+        qa_context = "\n".join([f"Q: {q}\nA: {a}" for q, a, _ in st.session_state.qa_history[-10:]])
+        context = qa_context
+
     try:
-        # Get relevant passages for the topic if specified
-        context = ""
-        if topic and topic in st.session_state.extracted_topics:
-            passage_ids = st.session_state.extracted_topics[topic]
-            # Get these passages from the collection
-            passages = [st.session_state.all_passages[pid] for pid in passage_ids if pid < len(st.session_state.all_passages)]
-            context = "\n".join(passages)
-        else:
-            # Use a sample of passages from the entire document
-            sample_size = min(10, len(st.session_state.all_passages))
-            passage_indices = np.random.choice(len(st.session_state.all_passages), sample_size, replace=False)
-            context = "\n".join([st.session_state.all_passages[i] for i in passage_indices])
-        
         # Generate quiz questions using OpenAI
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="google/gemini-2.5-flash",
             messages=[
-                {"role": "system", "content": "You are an expert at creating educational assessment questions. Create 5 multiple-choice questions based on the provided content. For each question, provide 4 options with only one correct answer, and include a brief explanation for why the answer is correct. Return the quiz in JSON format as an array of objects with 'question', 'options' (array), 'correctAnswerIndex', and 'explanation' fields."},
+                {"role": "system", "content": f"You are an expert at creating educational assessment questions. Create 5 multiple-choice questions based ONLY on the provided content about '{topic if topic else 'the document'}'. For each question, provide 4 options with only one correct answer, and include a brief explanation for why the answer is correct. Return the quiz in JSON format as an array of objects with 'question', 'options' (array), 'correctAnswerIndex', and 'explanation' fields."},
                 {"role": "user", "content": f"Here is the content to base the quiz on:\n\n{context[:4000]}...\n\nCreate 5 multiple-choice questions on this material in JSON format."}
             ],
             max_tokens=1500,
@@ -560,7 +562,6 @@ def generate_quiz(collection, topic=None):
             quiz_data = json.loads(quiz_json)
             return quiz_data
         except json.JSONDecodeError:
-            # Fallback if JSON parsing fails
             st.warning("Could not parse quiz properly. Generating a simpler version.")
             
             # Create a simpler quiz with basic questions
@@ -602,6 +603,13 @@ def generate_quiz(collection, topic=None):
                         "explanation": "This is the correct answer based on the content."
                     })
             
+            if not simple_quiz:
+                simple_quiz = [{
+                    "question": "Fallback question?",
+                    "options": ["A", "B", "C", "D"],
+                    "correctAnswerIndex": 0,
+                    "explanation": "No explanation available."
+                }]
             return simple_quiz
             
     except Exception as e:
@@ -781,7 +789,7 @@ if uploaded_files:
                     topic_text = "\n".join(topic_passages)
                     
                     response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
+                        model="google/gemini-2.5-flash",
                         messages=[
                             {"role": "system", "content": f"Create a fundamental question about '{topic}' based on this text."},
                             {"role": "user", "content": topic_text}
@@ -849,7 +857,7 @@ if uploaded_files:
                 if item["type"] == "figure":
                     try:
                         image = Image.open(io.BytesIO(item["content"]))
-                        st.sidebar.image(image, caption=item["caption"], use_column_width=True)
+                        st.sidebar.image(image, caption=item["caption"], use_column_width=True)  # <-- updated here
                     except Exception as e:
                         st.sidebar.warning(f"Could not display image: {e}")
                 else:  # Table
@@ -877,6 +885,10 @@ with main_col1:
                          help="Click to ask this question", use_container_width=True):
                     use_suggested_question(question)
     
+    if "pending_voice_input" in st.session_state and st.session_state.pending_voice_input:
+        st.session_state.question_input = st.session_state.pending_voice_input
+        st.session_state.pending_voice_input = ""
+
     # Question input area with voice option
     st.markdown("**Ask a question:**")
     input_col1, input_col2 = st.columns([5, 1])
@@ -889,7 +901,7 @@ with main_col1:
         if voice_button:
             spoken_text = listen_for_question()
             if spoken_text:
-                st.session_state.question_input = spoken_text
+                st.session_state.pending_voice_input = spoken_text
                 st.session_state.process_question = True
                 st.session_state.question_to_process = spoken_text
                 st.rerun()
@@ -988,7 +1000,7 @@ if st.session_state.current_quiz:
             # Radio buttons for options
             selected = st.radio(
                 f"Select answer for question {i+1}:",
-                options=q['options'],
+                options=q.get('options', ["Option A", "Option B", "Option C", "Option D"]),
                 key=f"quiz_q{i}"
             )
             
@@ -1000,8 +1012,11 @@ if st.session_state.current_quiz:
         
         # Submit button
         if st.button("Submit Quiz"):
-            st.session_state.quiz_submitted = True
-            st.rerun()
+            if len(st.session_state.quiz_answers) == len(quiz_data):
+                st.session_state.quiz_submitted = True
+                st.rerun()
+            else:
+                st.warning("Please answer all questions before submitting.")
     else:
         # Show quiz results
         correct_count = 0
@@ -1096,7 +1111,7 @@ if st.session_state.qa_history:
                 qa_content = "\n\n".join(qa_pairs)
                 
                 response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
+                    model="google/gemini-2.5-flash",
                     messages=[
                         {"role": "system", "content": "You are an expert at organizing information into clear, structured study notes. Create well-formatted study notes based on these question-answer pairs."},
                         {"role": "user", "content": f"Please organize these Q&A pairs into comprehensive study notes:\n\n{qa_content}"}
@@ -1111,4 +1126,4 @@ if st.session_state.qa_history:
                 b64 = base64.b64encode(notes.encode()).decode()
                 href = f'<a href="data:text/markdown;base64,{b64}" download="{filename}">Click here to download your study notes</a>'
                 st.markdown(href, unsafe_allow_html=True)
-            
+
