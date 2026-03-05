@@ -17,7 +17,17 @@ from sentence_transformers import SentenceTransformer
 # ---------------------------------------------------------------------------
 # API Configuration
 # ---------------------------------------------------------------------------
-API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+def _get_api_key():
+    """Resolve API key: env var → Streamlit secrets → empty."""
+    key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not key:
+        try:
+            key = st.secrets.get("OPENROUTER_API_KEY", "")
+        except Exception:
+            pass
+    return key
+
+API_KEY = _get_api_key()
 API_BASE = "https://openrouter.ai/api/v1"
 MODEL_NAME = "google/gemini-2.0-flash-001"
 
