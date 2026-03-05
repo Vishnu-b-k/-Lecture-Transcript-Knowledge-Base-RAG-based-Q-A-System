@@ -115,16 +115,23 @@ def extract_text(_file_bytes: bytes, filename: str) -> tuple[str, dict, list]:
     return full_text, metadata, images_list
 
 
-def split_passages(text: str, max_length: int = 500) -> list[str]:
-    """Split text into roughly equal passages for embedding."""
+def split_passages(text: str, max_length: int = 500, overlap: int = 100) -> list[str]:
+    """Split text into overlapping passages for better retrieval quality."""
     words = text.split()
-    passages, chunk = [], []
-    for word in words:
-        if len(" ".join(chunk)) + len(word) + 1 <= max_length:
-            chunk.append(word)
-        else:
-            passages.append(" ".join(chunk))
-            chunk = [word]
-    if chunk:
-        passages.append(" ".join(chunk))
+    if not words:
+        return []
+    passages = []
+    start = 0
+    while start < len(words):
+        end = start
+        chunk_len = 0
+        while end < len(words) and chunk_len + len(words[end]) + (1 if end > start else 0) <= max_length:
+            chunk_len += len(words[end]) + (1 if end > start else 0)
+            end += 1
+        if end == start:  # single very long word
+            end = start + 1
+        passages.append(" ".join(words[start:end]))
+        # Advance by (chunk size - overlap) words, minimum 1 word
+        overlap_words = max(1, overlap // 5)  # approx words in overlap
+        start = max(start + 1, end - overlap_words)
     return passages

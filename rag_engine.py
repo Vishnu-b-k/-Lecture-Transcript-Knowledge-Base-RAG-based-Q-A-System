@@ -25,6 +25,12 @@ def _get_client():
     global _client
     if _client is None:
         key = API_KEY or os.environ.get("OPENROUTER_API_KEY", "")
+        if not key:
+            try:
+                import streamlit as _st
+                key = _st.secrets.get("OPENROUTER_API_KEY", "")
+            except Exception:
+                pass
         _client = OpenAI(api_key=key, base_url=API_BASE)
     return _client
 

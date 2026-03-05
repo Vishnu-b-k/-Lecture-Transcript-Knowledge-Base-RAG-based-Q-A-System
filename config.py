@@ -42,5 +42,5 @@ def get_embedder():
 
 @st.cache_resource(show_spinner=False)
 def get_chroma_client():
-    """Create a persistent ChromaDB client exactly once."""
-    return chromadb.PersistentClient(path="./chroma_db")
+    """Create an in-memory ChromaDB client (safe for multi-user on Streamlit Cloud)."""
+    return chromadb.EphemeralClient()

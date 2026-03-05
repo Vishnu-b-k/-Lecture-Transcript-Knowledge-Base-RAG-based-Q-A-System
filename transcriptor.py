@@ -1,6 +1,7 @@
 """
 Lecture Transcript Insights — AI‑powered study assistant for online class students.
 """
+import html as html_mod
 import streamlit as st
 import datetime, base64, hashlib, io
 import plotly.graph_objects as go
@@ -23,6 +24,13 @@ st.set_page_config(
     layout="wide",
 )
 
+# Inject viewport meta so mobile browsers render at device width
+st.markdown(
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0, '
+    'maximum-scale=5.0, user-scalable=yes">',
+    unsafe_allow_html=True,
+)
+
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -31,6 +39,13 @@ html, body, [class*="css"] {
     font-family: 'Inter', sans-serif !important;
 }
 #MainMenu, footer, header {visibility: hidden;}
+
+/* ── Force Streamlit to respect mobile widths ── */
+.main .block-container {
+    max-width: 100% !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
 
 .logo-box {
     width: 100%; text-align: center; padding: 18px 0 10px;
@@ -52,12 +67,12 @@ html, body, [class*="css"] {
     color: #7C8DB0; font-size: .92rem; margin-top: 6px; line-height: 1.5;
 }
 
-.stat-row { display: flex; gap: 12px; margin: 12px 0; }
+.stat-row { display: flex; gap: 12px; margin: 12px 0; flex-wrap: wrap; }
 .stat-card {
-    flex: 1; background: linear-gradient(135deg, #EDF2FA 0%, #E3EBF6 100%);
+    flex: 1 1 80px; background: linear-gradient(135deg, #EDF2FA 0%, #E3EBF6 100%);
     border-radius: 14px; padding: 14px; text-align: center;
     box-shadow: 0 1px 6px rgba(91,141,239,.06);
-    transition: transform .2s;
+    transition: transform .2s; min-width: 0;
 }
 .stat-card:hover { transform: translateY(-2px); }
 .stat-card .num {
@@ -70,7 +85,7 @@ html, body, [class*="css"] {
 .chat-q, .chat-a {
     padding: 14px 18px; border-radius: 16px; margin: 6px 0;
     font-size: .9rem; line-height: 1.6; animation: fadeUp .3s ease;
-    max-width: 90%;
+    max-width: 90%; word-wrap: break-word; overflow-wrap: break-word;
 }
 .chat-q {
     background: linear-gradient(135deg, #3A7BD5, #5B8DEF);
@@ -172,21 +187,29 @@ section[data-testid="stSidebar"] .stButton > button {
     box-shadow: 0 5px 20px rgba(58,123,213,.3) !important;
 }
 
-/* ── Viewport meta for mobile ── */
-@viewport { width: device-width; }
-
-/* ── Touch‑friendly defaults ── */
+/* ── Touch-friendly defaults ── */
 button, input, select, textarea {
-    font-size: 16px !important; /* prevents iOS zoom on focus */
+    font-size: 16px !important;  /* prevents iOS zoom on focus */
 }
 .stTextInput > div > div > input {
     font-size: 16px !important;
     padding: 12px !important;
 }
+.stRadio > div { gap: 0.5rem !important; }
+.stRadio label {
+    padding: 8px 4px !important;
+    min-height: 44px !important;  /* touch target */
+    display: flex !important;
+    align-items: center !important;
+}
 
-/* ── Tablet (≤ 900px) ── */
+/* ── Tablet (max 900px) ── */
 @media (max-width: 900px) {
-    .hero h1 { font-size: 1.6rem; }
+    .main .block-container {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+    .hero h1 { font-size: 1.5rem; }
     .hero p { font-size: .85rem; }
     .stat-row { gap: 8px; }
     .stat-card { padding: 10px; border-radius: 12px; }
@@ -197,10 +220,15 @@ button, input, select, textarea {
     .score-badge { font-size: 1rem; padding: 10px 22px; }
 }
 
-/* ── Phone (≤ 600px) ── */
+/* ── Phone (max 600px) ── */
 @media (max-width: 600px) {
-    .hero { padding: 14px 8px 6px; }
-    .hero h1 { font-size: 1.3rem; }
+    .main .block-container {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+        padding-top: 1rem !important;
+    }
+    .hero { padding: 10px 4px 6px; }
+    .hero h1 { font-size: 1.25rem; }
     .hero p { font-size: .8rem; }
     .hero p br { display: none; }
     .stat-row { flex-direction: column; gap: 6px; }
@@ -225,14 +253,25 @@ button, input, select, textarea {
     .empty-state p { font-size: .82rem; }
     .prog-label { font-size: .7rem; }
     .prog-bar-bg { height: 6px; }
+    /* Make Streamlit tabs scrollable on mobile */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0 !important;
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        font-size: .8rem !important;
+        padding: 8px 10px !important;
+        white-space: nowrap !important;
+    }
 }
 
-/* ── Small phone (≤ 400px) ── */
+/* ── Small phone (max 400px) ── */
 @media (max-width: 400px) {
-    .hero h1 { font-size: 1.1rem; }
-    .hero p { font-size: .75rem; }
-    .chat-q, .chat-a { font-size: .82rem; padding: 8px 10px; }
-    .stat-card .num { font-size: 1.1rem; }
+    .hero h1 { font-size: 1.05rem; }
+    .hero p { font-size: .72rem; }
+    .chat-q, .chat-a { font-size: .8rem; padding: 8px 10px; }
+    .stat-card .num { font-size: 1rem; }
 }
 
 /* ── Streamlit columns responsive fix ── */
@@ -246,11 +285,7 @@ button, input, select, textarea {
 </style>
 """, unsafe_allow_html=True)
 
-# Inject viewport meta tag for proper mobile scaling
-st.markdown(
-    '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">',
-    unsafe_allow_html=True,
-)
+# (viewport meta tag is now injected above, before the style block)
 
 _DEFAULTS = {
     "qa_history": [],
@@ -441,7 +476,9 @@ else:
     pending_q = st.session_state.pop("_pending_q", None)
     active_question = pending_q or (question_input if submitted else None)
 
-    if active_question and collection:
+    if active_question and not collection:
+        st.warning("Still processing your transcripts. Please wait a moment and try again.")
+    elif active_question and collection:
         if not st.session_state.qa_history or active_question != st.session_state.qa_history[-1][0]:
             with st.spinner("Finding answer from your transcripts..."):
                 answer = get_answer(active_question, collection)
@@ -456,8 +493,10 @@ else:
     if st.session_state.qa_history:
         st.markdown('<div class="section-title">Conversation</div>', unsafe_allow_html=True)
         for q, a in st.session_state.qa_history:
-            st.markdown(f'<div class="chat-q">{q}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="chat-a">{a}</div>', unsafe_allow_html=True)
+            safe_q = html_mod.escape(q)
+            safe_a = html_mod.escape(a)
+            st.markdown(f'<div class="chat-q">{safe_q}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="chat-a">{safe_a}</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown('<div class="section-title">Test Your Knowledge</div>', unsafe_allow_html=True)
@@ -530,20 +569,21 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
-            # Track quiz score
-            if f"_quiz_scored_{len(st.session_state.quiz_scores)}" not in st.session_state:
+            # Track quiz score (only once per submission)
+            if not st.session_state.get("_last_quiz_scored", False):
                 st.session_state.quiz_scores.append({
                     "score": pct,
                     "correct": correct,
                     "total": len(quiz_data),
                     "topic": quiz_topic if quiz_topic != "All topics" else "General",
                 })
-                st.session_state[f"_quiz_scored_{len(st.session_state.quiz_scores)-1}"] = True
+                st.session_state["_last_quiz_scored"] = True
 
             if st.button("Try another quiz", use_container_width=True):
                 st.session_state.current_quiz = []
                 st.session_state.quiz_answers = {}
                 st.session_state.quiz_submitted = False
+                st.session_state["_last_quiz_scored"] = False
                 st.rerun()
 
     # ── Learning Analytics with 3D Plots ──
@@ -562,19 +602,7 @@ else:
             q_counts = [st.session_state.questions_per_topic.get(t, 0) for t in topics]
 
             if topics:
-                fig = go.Figure(data=[go.Bar3d(
-                    x=list(range(len(topics))),
-                    y=[0] * len(topics),
-                    z=[0] * len(topics),
-                    dx=[0.6] * len(topics),
-                    dy=[0.6] * len(topics),
-                    dz=progress_vals,
-                    color=progress_vals,
-                    colorscale=[[0, '#E3EBF6'], [0.5, '#5B8DEF'], [1, '#3A7BD5']],
-                    colorbar=dict(title='Progress %'),
-                    hovertext=[f"{t}<br>Progress: {p}%<br>Questions: {q}" for t, p, q in zip(topics, progress_vals, q_counts)],
-                    hoverinfo='text',
-                )] if hasattr(go, 'Bar3d') else [go.Scatter3d(
+                fig = go.Figure(data=[go.Scatter3d(
                     x=list(range(len(topics))),
                     y=q_counts,
                     z=progress_vals,
