@@ -1,7 +1,7 @@
 pdfplumber==0.11.4
 Pillow>=10.4.0
 sentence-transformers==3.4.1
-chromadb==0.6.3
+chromadb>=0.6.3
 openai>=1.40.0
 numpy>=1.26.2
 streamlit>=1.33.0
