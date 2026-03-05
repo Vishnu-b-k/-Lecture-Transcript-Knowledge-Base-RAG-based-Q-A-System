@@ -95,14 +95,15 @@ def query_collection(question: str, collection, n_results: int = 5) -> str:
 
 def get_answer(question: str, collection) -> str:
     """Retrieve context and generate an answer."""
-    context = query_collection(question, collection)
+    context = query_collection(question, collection, n_results=8)
     system = (
         "You are a lecture transcript assistant. Answer questions ONLY using the provided context. "
         "If the answer is not found in the context, reply: 'This information is not available in the uploaded lecture transcripts.' "
-        "Never use outside knowledge. Be concise and use markdown formatting."
+        "Never use outside knowledge. Provide thorough, detailed answers that fully explain the concepts. "
+        "Use examples from the transcript where relevant. Use markdown formatting with headings, bullet points, and bold text for clarity."
     )
     user = f"Lecture transcript context:\n{context}\n\nStudent question: {question}"
-    return _llm_call(system, user, max_tokens=600)
+    return _llm_call(system, user, max_tokens=1200)
 
 
 # ---------------------------------------------------------------------------
