@@ -1,108 +1,146 @@
-# 📚 StudyBuddy — Lecture Transcript Knowledge Base & RAG Q&A System
+# Lecture Transcript Knowledge Base — RAG-based Q&A System
 
-An AI‑powered learning assistant that transforms lecture PDFs into interactive study sessions with Q&A, quizzes, and progress tracking.
+An AI-powered learning assistant that transforms lecture transcript PDFs into interactive study sessions with Q&A, quizzes, summaries, and learning analytics.
 
-## ✨ Features
+**Live Demo:** [4niawbvvzyh7m2adukfyko.streamlit.app](https://4niawbvvzyh7m2adukfyko.streamlit.app/)
 
-- **PDF Analysis** — Upload multiple PDFs; auto‑extract topics, stats, and summaries
-- **AI Q&A** — Ask questions in natural language and get context‑aware answers
-- **Smart Quizzes** — Auto‑generated multiple‑choice quizzes with explanations
-- **Learning Progress** — Track which topics you've explored
-- **Export** — Download Q&A history for offline review
-- **Beautiful UI** — Pastel aesthetic with animations, chat bubbles, and a college logo placeholder
+---
 
-## 🗂️ Folder Structure
+## Features
+
+- **PDF Analysis** — Upload multiple lecture transcript PDFs; automatically extract topics, word counts, page stats, and embedded figures.
+- **AI-Powered Q&A** — Ask questions in natural language and receive context-aware answers grounded in the uploaded transcripts.
+- **Smart Quizzes** — Generate multiple-choice quizzes on specific topics or across all content, with scoring and explanations.
+- **Multi-Level Summaries** — Brief, detailed, and comprehensive summaries generated on demand.
+- **Learning Analytics** — Interactive 3D visualizations (progress overview, quiz performance surface, topic radar) built with Plotly.
+- **Progress Tracking** — Monitor which topics you have explored and how many questions you have asked per topic.
+- **Export** — Download your full Q&A history as a text file for offline review.
+
+---
+
+## Architecture
+
+The system follows a Retrieval-Augmented Generation (RAG) pipeline:
+
+1. **Ingestion** — PDFs are parsed with pdfplumber and PyMuPDF; text is split into overlapping passages.
+2. **Embedding** — Passages are encoded using Sentence Transformers (`all-MiniLM-L6-v2`) and stored in ChromaDB.
+3. **Retrieval** — User questions are embedded and matched against the vector store to find relevant context.
+4. **Generation** — Retrieved context is passed to an LLM (Google Gemini 2.0 Flash via OpenRouter) to produce answers, quizzes, and summaries.
+
+---
+
+## Project Structure
 
 ```
-├── .streamlit/config.toml   # Theme & server config
-├── config.py                # API keys, embedder, ChromaDB client
-├── pdf_processor.py         # PDF text extraction & passage splitting
-├── rag_engine.py            # Embeddings, retrieval, LLM calls, quizzes
-├── transcriptor.py          # Main Streamlit UI
+project_main/
+├── .streamlit/
+│   └── config.toml          # Streamlit theme and server configuration
+├── assets/
+│   └── logo/
+│       └── Christ_logo.png  # Application logo
+├── config.py                # API keys, model settings, cached resources
+├── pdf_processor.py         # PDF text extraction, figure extraction, passage splitting
+├── rag_engine.py            # Embedding, retrieval, LLM calls, quiz generation
+├── transcriptor.py          # Main Streamlit application (UI and orchestration)
 ├── requirements.txt         # Python dependencies
-├── .env.example             # Template for API key
-├── .gitignore               # Files to exclude from git
+├── .env.example             # Template for environment variables
+├── .gitignore               # Git ignore rules
 └── README.md                # This file
 ```
 
-## 🚀 Quick Start (Local)
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.10 or later
+- An OpenRouter API key ([get one here](https://openrouter.ai/keys))
+
+### Local Setup
 
 ```bash
-# 1. Clone the repo
+# Clone the repository
 git clone https://github.com/Vishnu-b-k/-Lecture-Transcript-Knowledge-Base-RAG-based-Q-A-System.git
 cd -Lecture-Transcript-Knowledge-Base-RAG-based-Q-A-System
 
-# 2. Create a virtual environment (recommended)
+# Create and activate a virtual environment
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS / Linux
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # macOS / Linux
 
-# 3. Install dependencies
+# Install dependencies
 pip install -r requirements.txt
 
-# 4. Set your API key
-#    Option A — environment variable (recommended):
-set OPENROUTER_API_KEY=sk-or-v1-YOUR_KEY_HERE       # Windows
-# export OPENROUTER_API_KEY=sk-or-v1-YOUR_KEY_HERE   # macOS / Linux
+# Configure your API key (choose one method)
 
-#    Option B — create a .env file:
+# Method A — Environment variable:
+set OPENROUTER_API_KEY=sk-or-v1-YOUR_KEY_HERE         # Windows
+# export OPENROUTER_API_KEY=sk-or-v1-YOUR_KEY_HERE     # macOS / Linux
+
+# Method B — .env file:
 cp .env.example .env
-#    Then edit .env and paste your key
+# Edit .env and add your key
 
-# 5. Run the app
+# Run the application
 streamlit run transcriptor.py
 ```
 
-## 🌐 Deployment
+The app will open at `http://localhost:8501`.
 
-### Option 1 — Streamlit Community Cloud (Free & Easiest)
+---
 
-1. Push your code to a **public** GitHub repository.
-2. Go to [share.streamlit.io](https://share.streamlit.io) and sign in with GitHub.
-3. Click **"New app"** → Select your repo, branch, and set the main file to `transcriptor.py`.
-4. Under **Advanced settings → Secrets**, add:
-   ```
+## Deployment
+
+### Streamlit Community Cloud (Recommended)
+
+1. Push the repository to GitHub.
+2. Sign in at [share.streamlit.io](https://share.streamlit.io).
+3. Click **New app**, select the repository and branch, and set `transcriptor.py` as the main file.
+4. Under **Advanced settings > Secrets**, add:
+   ```toml
    OPENROUTER_API_KEY = "sk-or-v1-YOUR_KEY_HERE"
    ```
-5. Click **Deploy** — your app will be live at `https://your-app.streamlit.app`.
+5. Click **Deploy**. The app will be available at `https://<your-app>.streamlit.app`.
 
-### Option 2 — Render (Free tier available)
+### Render
 
-1. Push code to GitHub.
-2. Create a **New Web Service** on [render.com](https://render.com).
-3. Connect your GitHub repo.
-4. Set:
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `streamlit run transcriptor.py --server.port $PORT --server.address 0.0.0.0`
-5. Add environment variable: `OPENROUTER_API_KEY` = your key.
-6. Deploy.
-
-### Option 3 — Railway
-
-1. Push code to GitHub.
-2. Create a new project on [railway.app](https://railway.app) and connect the repo.
-3. Add environment variable `OPENROUTER_API_KEY`.
-4. Add a `Procfile` (if needed):
+1. Create a **New Web Service** on [render.com](https://render.com) and connect the GitHub repository.
+2. Set the build command to `pip install -r requirements.txt`.
+3. Set the start command to:
    ```
-   web: streamlit run transcriptor.py --server.port $PORT --server.address 0.0.0.0
+   streamlit run transcriptor.py --server.port $PORT --server.address 0.0.0.0
    ```
+4. Add the `OPENROUTER_API_KEY` environment variable.
 5. Deploy.
 
-> **Note:** The `chroma_db/` folder is auto‑created at runtime. On free‑tier platforms the vector database resets on each cold start — this is fine since embeddings are rebuilt from uploaded PDFs.
+> **Note:** The `chroma_db/` directory is created at runtime. On free-tier platforms the vector database resets on each cold start; this is expected since embeddings are rebuilt from the uploaded PDFs.
 
-## ⚙️ Configuration
+---
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENROUTER_API_KEY` | Your OpenRouter API key | *(required)* |
-| Model | Set in `config.py` → `MODEL_NAME` | `google/gemini-2.0-flash-001` |
+## Configuration
 
-Get your API key at [openrouter.ai/keys](https://openrouter.ai/keys).
+| Variable             | Description                       | Default                         |
+|----------------------|-----------------------------------|---------------------------------|
+| `OPENROUTER_API_KEY` | Your OpenRouter API key           | *(required)*                    |
+| `MODEL_NAME`         | LLM model (set in `config.py`)   | `google/gemini-2.0-flash-001`  |
+| Embedding model      | Sentence Transformer model        | `all-MiniLM-L6-v2`             |
 
-## 📦 Dependencies
+---
 
-- **Streamlit** — UI framework
-- **ChromaDB** — Vector database
-- **Sentence Transformers** — Embedding model (`all-MiniLM-L6-v2`)
-- **OpenAI (via OpenRouter)** — LLM for Q&A, quizzes, summaries
-- **pdfplumber** — PDF text extraction
+## Tech Stack
+
+| Component         | Technology                                 |
+|-------------------|--------------------------------------------|
+| Frontend          | Streamlit                                  |
+| Vector Database   | ChromaDB                                   |
+| Embeddings        | Sentence Transformers (all-MiniLM-L6-v2)   |
+| LLM               | Google Gemini 2.0 Flash (via OpenRouter)   |
+| PDF Parsing       | pdfplumber, PyMuPDF                        |
+| Visualizations    | Plotly (3D scatter, surface, radar)         |
+
+---
+
+## License
+
+This project was developed as part of a 6th semester academic project at Christ University.
