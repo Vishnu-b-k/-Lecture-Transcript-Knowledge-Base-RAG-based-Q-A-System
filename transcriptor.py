@@ -19,7 +19,7 @@ from rag_engine import (
 
 st.set_page_config(
     page_title="Lecture Transcript Insights",
-    page_icon="",
+    page_icon=r"C:\Users\vishn\OneDrive\Desktop\Vishnu\project_6sem\project_main\assets\logo\Christ_logo.png",
     layout="wide",
 )
 
@@ -275,7 +275,7 @@ for k, v in _DEFAULTS.items():
 
 with st.sidebar:
     st.markdown('<div class="logo-box">', unsafe_allow_html=True)
-    st.image("https://ibb.co/QvP2NF28", width=300)
+    st.image(r"C:\Users\vishn\OneDrive\Desktop\Vishnu\project_6sem\project_main\assets\logo\Christ_logo.png", width=300)
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown("---")
     st.markdown("### Upload Transcripts")
