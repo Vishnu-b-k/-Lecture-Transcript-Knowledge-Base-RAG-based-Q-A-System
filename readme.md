@@ -143,4 +143,4 @@ The app will open at `http://localhost:8501`.
 
 ## License
 
-This project was developed as part of a 6th semester academic project at Christ University.
+This project was developed as part of a academic project at Christ University.
