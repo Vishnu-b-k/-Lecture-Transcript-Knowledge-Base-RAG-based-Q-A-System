@@ -1,6 +1,7 @@
 """
 RAG engine — embedding, retrieval, answer generation, quizzes, summaries.
 """
+import os
 import re
 import json
 import uuid
@@ -17,11 +18,20 @@ logger = logging.getLogger(__name__)
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-_client = OpenAI(api_key=API_KEY, base_url=API_BASE)
+_client = None
+
+def _get_client():
+    """Lazy-init the OpenAI client so env vars / secrets are ready."""
+    global _client
+    if _client is None:
+        key = API_KEY or os.environ.get("OPENROUTER_API_KEY", "")
+        _client = OpenAI(api_key=key, base_url=API_BASE)
+    return _client
 
 def _llm_call(system_prompt: str, user_prompt: str, max_tokens: int = 500, temperature: float = 0.3) -> str:
     """Single place for all LLM calls — easier to swap models later."""
-    response = _client.chat.completions.create(
+    client = _get_client()
+    response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
             {"role": "system", "content": system_prompt},
