@@ -6,7 +6,7 @@ import json
 import uuid
 import logging
 import numpy as np
-import openai
+from openai import OpenAI
 import streamlit as st
 
 from config import API_KEY, API_BASE, MODEL_NAME, get_embedder, get_chroma_client
@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+_client = OpenAI(api_key=API_KEY, base_url=API_BASE)
+
 def _llm_call(system_prompt: str, user_prompt: str, max_tokens: int = 500, temperature: float = 0.3) -> str:
     """Single place for all LLM calls — easier to swap models later."""
-    openai.api_key = API_KEY
-    openai.api_base = API_BASE
-    response = openai.ChatCompletion.create(
+    response = _client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
             {"role": "system", "content": system_prompt},
@@ -30,7 +30,7 @@ def _llm_call(system_prompt: str, user_prompt: str, max_tokens: int = 500, tempe
         max_tokens=max_tokens,
         temperature=temperature,
     )
-    return response["choices"][0]["message"]["content"].strip()
+    return response.choices[0].message.content.strip()
 
 
 # ---------------------------------------------------------------------------
